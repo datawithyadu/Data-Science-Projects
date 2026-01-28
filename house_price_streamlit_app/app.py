@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import io
+import os
 
 # --------------------------------------------------
 # Page configuration
@@ -25,15 +26,18 @@ st.markdown(
 # --------------------------------------------------
 # Load trained objects
 # --------------------------------------------------
-@st.cache_resource
 def load_artifacts():
-    model = joblib.load("best_xgb_model.pkl")
-    ct = joblib.load("column_transformer.pkl")
-    imputer_num = joblib.load("imputer_num.pkl")
-    imputer_cat = joblib.load("imputer_cat.pkl")
-    features_to_drop = joblib.load("features_to_drop.pkl")
-    all_features = joblib.load("all_features.pkl")
+    base_path = os.path.dirname(__file__)
+
+    model = joblib.load(os.path.join(base_path, "best_xgb_model.pkl"))
+    ct = joblib.load(os.path.join(base_path, "column_transformer.pkl"))
+    imputer_num = joblib.load(os.path.join(base_path, "imputer_num.pkl"))
+    imputer_cat = joblib.load(os.path.join(base_path, "imputer_cat.pkl"))
+    features_to_drop = joblib.load(os.path.join(base_path, "features_to_drop.pkl"))
+    all_features = joblib.load(os.path.join(base_path, "all_features.pkl"))
+
     return model, ct, imputer_num, imputer_cat, features_to_drop, all_features
+
 
 
 model, ct, imputer_num, imputer_cat, features_to_drop, all_features = load_artifacts()
