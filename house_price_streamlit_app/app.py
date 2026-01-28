@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏠 House Price Prediction App")
+st.title("House Price Prediction App")
 st.markdown(
     """
     This app predicts **house sale prices** using a trained **XGBoost model**.  
@@ -87,7 +87,7 @@ if mode == "Single House Prediction":
 
         prediction = model.predict(final_df)[0]
 
-        st.success(f"💰 Estimated House Price: **${prediction:,.0f}**")
+        st.success(f"Estimated House Price: **${prediction:,.0f}**")
 
 
 # ==================================================
@@ -95,7 +95,7 @@ if mode == "Single House Prediction":
 # ==================================================
 if mode == "Bulk Prediction (Excel Upload)":
 
-    st.subheader("📤 Upload Excel File for Bulk Prediction")
+    st.subheader("Upload Excel File for Bulk Prediction")
 
     uploaded_file = st.file_uploader(
         "Upload an Excel file (.xlsx)",
@@ -139,7 +139,7 @@ if mode == "Bulk Prediction (Excel Upload)":
         if ids is not None:
             result_df.insert(0, "Id", ids)
 
-        st.success("✅ Prediction completed successfully!")
+        st.success("Prediction completed successfully!")
         st.dataframe(result_df.head())
 
         # Download predictions
