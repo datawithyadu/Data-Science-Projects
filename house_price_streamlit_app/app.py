@@ -2,104 +2,69 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
-import io
 
-# --------------------------------------------------
-# Page config
-# --------------------------------------------------
-st.set_page_config(
-    page_title="House Price Prediction",
-    layout="wide"
-)
+st.set_page_config(page_title="House Price Prediction", layout="wide")
 
-st.title("House Price Prediction")
-st.markdown(
-    """
-    Upload an **Excel file** containing house features  
-    to predict **Sale Prices** using a trained ML model.
-    """
-)
+BASE_PATH = os.path.dirname(__file__)
 
-# --------------------------------------------------
-# Load model artifacts safely
-# --------------------------------------------------
 @st.cache_resource
 def load_artifacts():
-    base_path = os.path.dirname(__file__)
-
-    model = joblib.load(os.path.join(base_path, "best_xgb_model.pkl"))
-    ct = joblib.load(os.path.join(base_path, "column_transformer.pkl"))
-    imputer_num = joblib.load(os.path.join(base_path, "imputer_num.pkl"))
-    imputer_cat = joblib.load(os.path.join(base_path, "imputer_cat.pkl"))
-    features_to_drop = joblib.load(os.path.join(base_path, "features_to_drop.pkl"))
-    all_features = joblib.load(os.path.join(base_path, "all_features.pkl"))
-
+    model = joblib.load(os.path.join(BASE_PATH, "best_xgb_model.pkl"))
+    ct = joblib.load(os.path.join(BASE_PATH, "column_transformer.pkl"))
+    imputer_num = joblib.load(os.path.join(BASE_PATH, "imputer_num.pkl"))
+    imputer_cat = joblib.load(os.path.join(BASE_PATH, "imputer_cat.pkl"))
+    features_to_drop = joblib.load(os.path.join(BASE_PATH, "features_to_drop.pkl"))
+    all_features = joblib.load(os.path.join(BASE_PATH, "all_features.pkl"))
     return model, ct, imputer_num, imputer_cat, features_to_drop, all_features
 
 
 model, ct, imputer_num, imputer_cat, features_to_drop, all_features = load_artifacts()
 
-# --------------------------------------------------
-# File upload
-# --------------------------------------------------
+st.title("House Price Prediction")
+st.write("Upload a CSV or Excel file with **all required features**")
+
 uploaded_file = st.file_uploader(
-    "📤 Upload Excel file (.xlsx)",
-    type=["xlsx"]
+    "Upload input file",
+    type=["csv", "xlsx"]
 )
 
-if uploaded_file is not None:
+if uploaded_file:
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
 
-    df = pd.read_excel(uploaded_file)
     st.subheader("Uploaded Data Preview")
     st.dataframe(df.head())
 
-    # Handle Id column
-    ids = None
-    if "Id" in df.columns:
-        ids = df["Id"]
-        df = df.drop("Id", axis=1)
-
-    # Separate numeric & categorical columns
-    num_cols = df.select_dtypes(include=["int64", "float64"]).columns
-    cat_cols = df.select_dtypes(include=["object", "category"]).columns
-
-    # Validate input
-    if df.empty:
-        st.error("Uploaded file is empty.")
+    # Check missing features
+    missing_cols = set(all_features) - set(df.columns)
+    if missing_cols:
+        st.error(f"Missing required columns: {missing_cols}")
         st.stop()
 
-    # Impute missing values
+    # Drop unwanted features
+    df = df.drop(columns=features_to_drop, errors="ignore")
+
+    # Split numeric & categorical
+    num_cols = imputer_num.feature_names_in_
+    cat_cols = imputer_cat.feature_names_in_
+
     df[num_cols] = imputer_num.transform(df[num_cols])
     df[cat_cols] = imputer_cat.transform(df[cat_cols])
 
-    # Encode categorical variables
-    encoded = ct.transform(df)
-    encoded_df = pd.DataFrame(encoded, columns=all_features)
+    X = ct.transform(df)
 
-    # Drop non-contributing features
-    final_df = encoded_df.drop(columns=features_to_drop, errors="ignore")
+    predictions = model.predict(X)
 
-    # Predict
-    predictions = model.predict(final_df)
+    df["Predicted_Price"] = predictions
 
-    # Prepare output
-    result_df = df.copy()
-    result_df["Predicted_SalePrice"] = predictions
-
-    if ids is not None:
-        result_df.insert(0, "Id", ids)
-
-    st.success("Prediction completed successfully!")
-    st.dataframe(result_df.head())
-
-    # Download results
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        result_df.to_excel(writer, index=False)
+    st.subheader("Predictions")
+    st.dataframe(df[["Predicted_Price"]])
 
     st.download_button(
-        label="Download Predictions",
-        data=output.getvalue(),
-        file_name="house_price_predictions.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "⬇ Download Predictions",
+        df.to_csv(index=False),
+        file_name="house_price_predictions.csv",
+        mime="text/csv"
     )
